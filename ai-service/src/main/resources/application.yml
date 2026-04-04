@@ -1,0 +1,54 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: ai-service
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:smartfinance}
+    password: ${RABBITMQ_PASSWORD:smartfinance}
+    virtual-host: /
+
+# RabbitMQ queues consumed/published
+rabbitmq:
+  exchange: smartfinance.events
+  queues:
+    transactions-imported: smartfinance.transactions.imported
+    ai-categorization-completed: smartfinance.ai.categorization.completed
+
+# OpenAI
+openai:
+  api-key: ${OPENAI_API_KEY}
+  model: gpt-4o-mini
+  max-tokens: 1000
+  temperature: 0.1
+
+# AI response cache TTL
+ai:
+  cache:
+    insights-ttl-hours: 24
+    forecast-ttl-hours: 6
+
+# JWT secret (para validar tokens nas chamadas HTTP directas)
+jwt:
+  secret: ${JWT_SECRET}
+
+# Finance service URL (para buscar dados de transações)
+services:
+  finance-service:
+    url: http://${FINANCE_SERVICE_HOST:localhost}:8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info

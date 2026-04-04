@@ -1,0 +1,84 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  cloud:
+    gateway:
+      routes:
+        # Auth Service — público (sem JwtAuthenticationFilter)
+        - id: auth-service
+          uri: http://${AUTH_SERVICE_HOST:localhost}:8081
+          predicates:
+            - Path=/api/v1/auth/**, /api/v1/users/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                redis-rate-limiter.requestedTokens: 1
+
+        # Finance Service — requer JWT
+        - id: finance-service
+          uri: http://${FINANCE_SERVICE_HOST:localhost}:8082
+          predicates:
+            - Path=/api/v1/accounts/**, /api/v1/transactions/**, /api/v1/categories/**, /api/v1/reports/**, /api/v1/budgets/**
+          filters:
+            - JwtAuthenticationFilter
+
+        # AI Service — requer JWT
+        - id: ai-service
+          uri: http://${AI_SERVICE_HOST:localhost}:8083
+          predicates:
+            - Path=/api/v1/ai/**
+          filters:
+            - JwtAuthenticationFilter
+
+        # Notification Service — requer JWT
+        - id: notification-service
+          uri: http://${NOTIFICATION_SERVICE_HOST:localhost}:8084
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - JwtAuthenticationFilter
+
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "${CORS_ALLOWED_ORIGIN_LOCAL:http://localhost:5173}"
+              - "${CORS_ALLOWED_ORIGIN_PROD:https://smartfinance.example.com}"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+            maxAge: 3600
+
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+# JWT secret (partilhado com os serviços para validação no gateway)
+jwt:
+  secret: ${JWT_SECRET}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      show-details: when-authorized
