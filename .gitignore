@@ -25,3 +25,5 @@ replay_pid*
 auth-service/src/main/resources/application-local.yml
 /.idea
 /auth-service/target
+/finance-service/target
+finance-service/src/main/resources/application-local.yml

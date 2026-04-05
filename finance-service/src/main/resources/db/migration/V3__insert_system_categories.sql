@@ -1,0 +1,15 @@
+INSERT INTO categories (name, type, icon, is_system) VALUES
+  ('Alimentação', 'EXPENSE', 'utensils', true),
+  ('Transporte', 'EXPENSE', 'car', true),
+  ('Habitação', 'EXPENSE', 'home', true),
+  ('Saúde', 'EXPENSE', 'heart', true),
+  ('Entretenimento', 'EXPENSE', 'tv', true),
+  ('Educação', 'EXPENSE', 'book', true),
+  ('Vestuário', 'EXPENSE', 'shirt', true),
+  ('Tecnologia', 'EXPENSE', 'laptop', true),
+  ('Viagens', 'EXPENSE', 'plane', true),
+  ('Outros', 'EXPENSE', 'more-horizontal', true),
+  ('Salário', 'INCOME', 'briefcase', true),
+  ('Freelance', 'INCOME', 'code', true),
+  ('Investimentos', 'INCOME', 'trending-up', true),
+  ('Outros Rendimentos', 'INCOME', 'plus-circle', true);
