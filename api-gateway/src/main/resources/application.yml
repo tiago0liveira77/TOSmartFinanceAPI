@@ -14,7 +14,9 @@ spring:
   cloud:
     gateway:
       routes:
-        # Auth Service — público (sem JwtAuthenticationFilter)
+        # Auth Service — público
+        # JWT validation is handled by JwtAuthenticationFilter (GlobalFilter)
+        # which whitelists /api/v1/auth/** paths automatically.
         - id: auth-service
           uri: http://${AUTH_SERVICE_HOST:localhost}:8081
           predicates:
@@ -25,30 +27,46 @@ spring:
                 redis-rate-limiter.replenishRate: 20
                 redis-rate-limiter.burstCapacity: 40
                 redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@ipKeyResolver}"
 
-        # Finance Service — requer JWT
+        # Finance Service — requer JWT (validado pelo GlobalFilter)
         - id: finance-service
           uri: http://${FINANCE_SERVICE_HOST:localhost}:8082
           predicates:
             - Path=/api/v1/accounts/**, /api/v1/transactions/**, /api/v1/categories/**, /api/v1/reports/**, /api/v1/budgets/**
           filters:
-            - JwtAuthenticationFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@ipKeyResolver}"
 
-        # AI Service — requer JWT
+        # AI Service — requer JWT (validado pelo GlobalFilter)
         - id: ai-service
           uri: http://${AI_SERVICE_HOST:localhost}:8083
           predicates:
             - Path=/api/v1/ai/**
           filters:
-            - JwtAuthenticationFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@ipKeyResolver}"
 
-        # Notification Service — requer JWT
+        # Notification Service — requer JWT (validado pelo GlobalFilter)
         - id: notification-service
           uri: http://${NOTIFICATION_SERVICE_HOST:localhost}:8084
           predicates:
             - Path=/api/v1/notifications/**
           filters:
-            - JwtAuthenticationFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@ipKeyResolver}"
 
       globalcors:
         corsConfigurations:
@@ -60,6 +78,7 @@ spring:
               - GET
               - POST
               - PUT
+              - PATCH
               - DELETE
               - OPTIONS
             allowedHeaders:
@@ -70,9 +89,9 @@ spring:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
 
-# JWT secret (partilhado com os serviços para validação no gateway)
+# JWT secret — shared with all services for token validation
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:smartfinance-dev-secret-key-minimum-32chars}
 
 management:
   endpoints:
@@ -82,3 +101,8 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+logging:
+  level:
+    com.smartfinance.gateway: DEBUG
+    org.springframework.cloud.gateway: INFO

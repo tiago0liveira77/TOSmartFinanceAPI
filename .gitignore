@@ -27,3 +27,8 @@ auth-service/src/main/resources/application-local.yml
 /auth-service/target
 /finance-service/target
 finance-service/src/main/resources/application-local.yml
+/ai-service/target
+api-gateway/src/main/resources/application-local.yml
+/api-gateway/target
+api-gateway/src/main/resources/application-local.yml
+/notification-service/target

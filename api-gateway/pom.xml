@@ -27,6 +27,12 @@
             <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
         </dependency>
 
+        <!-- Spring Security WebFlux (para SecurityWebFilterChain + CSRF disable) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
         <!-- shared-lib para JwtValidator -->
         <dependency>
             <groupId>com.smartfinance</groupId>
