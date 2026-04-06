@@ -6,6 +6,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public class TransactionSpecification {
@@ -28,8 +29,16 @@ public class TransactionSpecification {
         return (root, query, cb) -> cb.equal(root.get("category").get("id"), categoryId);
     }
 
+    public static Specification<Transaction> forCategories(List<UUID> categoryIds) {
+        return (root, query, cb) -> root.get("category").get("id").in(categoryIds);
+    }
+
     public static Specification<Transaction> forType(TransactionType type) {
         return (root, query, cb) -> cb.equal(root.get("type"), type);
+    }
+
+    public static Specification<Transaction> forTypes(List<TransactionType> types) {
+        return (root, query, cb) -> root.get("type").in(types);
     }
 
     public static Specification<Transaction> dateFrom(LocalDate date) {
@@ -53,20 +62,27 @@ public class TransactionSpecification {
                 cb.like(cb.lower(root.get("description")), "%" + search.toLowerCase() + "%");
     }
 
-    public static Specification<Transaction> build(UUID userId, UUID accountId, UUID categoryId,
-                                                   TransactionType type, LocalDate startDate,
-                                                   LocalDate endDate, BigDecimal minAmount,
-                                                   BigDecimal maxAmount, String search) {
+    public static Specification<Transaction> isSettled(boolean settled) {
+        return (root, query, cb) -> cb.equal(root.get("settled"), settled);
+    }
+
+    public static Specification<Transaction> build(UUID userId, UUID accountId,
+                                                   List<UUID> categoryIds,
+                                                   List<TransactionType> types,
+                                                   LocalDate startDate, LocalDate endDate,
+                                                   BigDecimal minAmount, BigDecimal maxAmount,
+                                                   String search, Boolean settled) {
         Specification<Transaction> spec = Specification.where(forUser(userId)).and(notDeleted());
 
-        if (accountId != null)  spec = spec.and(forAccount(accountId));
-        if (categoryId != null) spec = spec.and(forCategory(categoryId));
-        if (type != null)       spec = spec.and(forType(type));
-        if (startDate != null)  spec = spec.and(dateFrom(startDate));
-        if (endDate != null)    spec = spec.and(dateTo(endDate));
-        if (minAmount != null)  spec = spec.and(minAmount(minAmount));
-        if (maxAmount != null)  spec = spec.and(maxAmount(maxAmount));
-        if (search != null && !search.isBlank()) spec = spec.and(descriptionContains(search));
+        if (accountId != null)                              spec = spec.and(forAccount(accountId));
+        if (categoryIds != null && !categoryIds.isEmpty())  spec = spec.and(forCategories(categoryIds));
+        if (types != null && !types.isEmpty())              spec = spec.and(forTypes(types));
+        if (startDate != null)                              spec = spec.and(dateFrom(startDate));
+        if (endDate != null)                                spec = spec.and(dateTo(endDate));
+        if (minAmount != null)                              spec = spec.and(minAmount(minAmount));
+        if (maxAmount != null)                              spec = spec.and(maxAmount(maxAmount));
+        if (search != null && !search.isBlank())            spec = spec.and(descriptionContains(search));
+        if (settled != null)                                spec = spec.and(isSettled(settled));
 
         return spec;
     }

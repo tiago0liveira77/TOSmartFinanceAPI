@@ -42,14 +42,14 @@ public class TransactionService {
         return UUID.fromString(SecurityContextHolder.getContext().getAuthentication().getName());
     }
 
-    public PageResponse<TransactionResponse> findAll(UUID accountId, UUID categoryId,
-                                                     TransactionType type, LocalDate startDate,
+    public PageResponse<TransactionResponse> findAll(UUID accountId, List<UUID> categoryIds,
+                                                     List<TransactionType> types, LocalDate startDate,
                                                      LocalDate endDate, BigDecimal minAmount,
                                                      BigDecimal maxAmount, String search,
-                                                     Pageable pageable) {
+                                                     Boolean settled, Pageable pageable) {
         UUID userId = getUserId();
         Specification<Transaction> spec = TransactionSpecification.build(
-                userId, accountId, categoryId, type, startDate, endDate, minAmount, maxAmount, search);
+                userId, accountId, categoryIds, types, startDate, endDate, minAmount, maxAmount, search, settled);
 
         Page<TransactionResponse> page = transactionRepository.findAll(spec, pageable)
                 .map(TransactionResponse::from);

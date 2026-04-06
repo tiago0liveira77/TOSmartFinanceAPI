@@ -2,6 +2,7 @@ package com.smartfinance.finance.controller;
 
 import com.smartfinance.finance.dto.response.BudgetStatusResponse;
 import com.smartfinance.finance.dto.response.CategoryReportResponse;
+import com.smartfinance.finance.dto.response.DailyBreakdownResponse;
 import com.smartfinance.finance.dto.response.MonthlyTrendResponse;
 import com.smartfinance.finance.dto.response.ReportSummaryResponse;
 import com.smartfinance.finance.entity.TransactionType;
@@ -47,11 +48,22 @@ public class ReportController {
 
     @GetMapping("/monthly-trend")
     public ApiResponse<List<MonthlyTrendResponse>> getMonthlyTrend(
+            @RequestParam(name = "fromMonth", required = false) String fromMonth,
+            @RequestParam(name = "months", defaultValue = "6") int months) {
+        LocalDate start = fromMonth != null
+                ? LocalDate.parse(fromMonth + "-01")
+                : LocalDate.now().minusMonths(months - 1).withDayOfMonth(1);
+        return ApiResponse.ok(reportService.getMonthlyTrend(start, months));
+    }
+
+    @GetMapping("/daily-breakdown")
+    public ApiResponse<List<DailyBreakdownResponse>> getDailyBreakdown(
             @RequestParam(name = "year", required = false) Integer year,
-            @RequestParam(name = "months", defaultValue = "12") int months) {
-        return ApiResponse.ok(reportService.getMonthlyTrend(
-                year != null ? year : LocalDate.now().getYear(),
-                months));
+            @RequestParam(name = "month", required = false) Integer month) {
+        LocalDate now = LocalDate.now();
+        return ApiResponse.ok(reportService.getDailyBreakdown(
+                year != null ? year : now.getYear(),
+                month != null ? month : now.getMonthValue()));
     }
 
     @GetMapping("/budget-status")

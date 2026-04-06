@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -34,13 +35,14 @@ public class TransactionController {
     @GetMapping
     public ApiResponse<PageResponse<TransactionResponse>> findAll(
             @RequestParam(name = "accountId", required = false) UUID accountId,
-            @RequestParam(name = "categoryId", required = false) UUID categoryId,
-            @RequestParam(name = "type", required = false) TransactionType type,
+            @RequestParam(name = "categoryIds", required = false) List<UUID> categoryIds,
+            @RequestParam(name = "types", required = false) List<TransactionType> types,
             @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(name = "minAmount", required = false) BigDecimal minAmount,
             @RequestParam(name = "maxAmount", required = false) BigDecimal maxAmount,
             @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "settled", required = false) Boolean settled,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size,
             @RequestParam(name = "sort", defaultValue = "date,desc") String sort) {
@@ -50,8 +52,8 @@ public class TransactionController {
                 ? Sort.Direction.ASC : Sort.Direction.DESC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParts[0]));
 
-        return ApiResponse.ok(transactionService.findAll(accountId, categoryId, type,
-                startDate, endDate, minAmount, maxAmount, search, pageable));
+        return ApiResponse.ok(transactionService.findAll(accountId, categoryIds, types,
+                startDate, endDate, minAmount, maxAmount, search, settled, pageable));
     }
 
     @PostMapping

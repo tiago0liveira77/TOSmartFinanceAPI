@@ -20,6 +20,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
 
     List<Transaction> findByRecurrenceGroupIdAndUserIdAndDeletedAtIsNull(UUID recurrenceGroupId, UUID userId);
 
+    @Query("SELECT t.date, t.type, SUM(t.amount) FROM Transaction t " +
+            "WHERE t.userId = :userId AND t.date >= :start AND t.date < :end " +
+            "AND t.deletedAt IS NULL AND t.settled = true " +
+            "GROUP BY t.date, t.type ORDER BY t.date")
+    List<Object[]> findDailyTotals(
+            @Param("userId") UUID userId,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end);
+
     @Query("SELECT t FROM Transaction t WHERE t.settled = false AND t.date <= :today AND t.deletedAt IS NULL")
     List<Transaction> findUnsettledDue(@Param("today") LocalDate today);
 
