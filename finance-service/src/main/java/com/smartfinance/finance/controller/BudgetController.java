@@ -32,19 +32,19 @@ public class BudgetController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<BudgetResponse> findById(@PathVariable UUID id) {
+    public ApiResponse<BudgetResponse> findById(@PathVariable("id") UUID id) {
         return ApiResponse.ok(budgetService.findById(id));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<BudgetResponse> update(@PathVariable UUID id,
+    public ApiResponse<BudgetResponse> update(@PathVariable("id") UUID id,
                                               @Valid @RequestBody UpdateBudgetRequest request) {
         return ApiResponse.ok(budgetService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable UUID id) {
+    public void delete(@PathVariable("id") UUID id) {
         budgetService.delete(id);
     }
 }

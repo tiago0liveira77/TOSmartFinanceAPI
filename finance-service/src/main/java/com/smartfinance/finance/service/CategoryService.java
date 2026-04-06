@@ -1,6 +1,7 @@
 package com.smartfinance.finance.service;
 
 import com.smartfinance.finance.dto.request.CreateCategoryRequest;
+import com.smartfinance.finance.dto.request.UpdateCategoryRequest;
 import com.smartfinance.finance.dto.response.CategoryResponse;
 import com.smartfinance.finance.entity.Category;
 import com.smartfinance.finance.exception.CategoryNotFoundException;
@@ -52,13 +53,16 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryResponse update(UUID id, CreateCategoryRequest request) {
+    public CategoryResponse update(UUID id, UpdateCategoryRequest request) {
         UUID userId = getUserId();
-        Category category = categoryRepository.findByIdAndUserId(id, userId)
+        Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException(id));
 
         if (category.isSystem()) {
             throw new SmartFinanceException("Cannot modify system categories", HttpStatus.FORBIDDEN);
+        }
+        if (!userId.equals(category.getUserId())) {
+            throw new SmartFinanceException("Category not found", HttpStatus.NOT_FOUND);
         }
 
         category.setName(request.name());
@@ -71,11 +75,14 @@ public class CategoryService {
     @Transactional
     public void delete(UUID id) {
         UUID userId = getUserId();
-        Category category = categoryRepository.findByIdAndUserId(id, userId)
+        Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException(id));
 
         if (category.isSystem()) {
             throw new SmartFinanceException("Cannot delete system categories", HttpStatus.FORBIDDEN);
+        }
+        if (!userId.equals(category.getUserId())) {
+            throw new SmartFinanceException("Category not found", HttpStatus.NOT_FOUND);
         }
 
         categoryRepository.delete(category);

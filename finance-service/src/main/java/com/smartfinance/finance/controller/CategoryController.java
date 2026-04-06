@@ -1,6 +1,7 @@
 package com.smartfinance.finance.controller;
 
 import com.smartfinance.finance.dto.request.CreateCategoryRequest;
+import com.smartfinance.finance.dto.request.UpdateCategoryRequest;
 import com.smartfinance.finance.dto.response.CategoryResponse;
 import com.smartfinance.finance.service.CategoryService;
 import com.smartfinance.shared.dto.ApiResponse;
@@ -31,14 +32,14 @@ public class CategoryController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<CategoryResponse> update(@PathVariable UUID id,
-                                                @Valid @RequestBody CreateCategoryRequest request) {
+    public ApiResponse<CategoryResponse> update(@PathVariable("id") UUID id,
+                                                @Valid @RequestBody UpdateCategoryRequest request) {
         return ApiResponse.ok(categoryService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable UUID id) {
+    public void delete(@PathVariable("id") UUID id) {
         categoryService.delete(id);
     }
 }

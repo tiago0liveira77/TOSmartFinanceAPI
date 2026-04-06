@@ -50,7 +50,7 @@ spring:
 
 # JWT configuration
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:smartfinance-dev-secret-key-minimum-32chars}
   access-token-expiration: 900        # 15 minutos em segundos
   refresh-token-expiration: 604800    # 7 dias em segundos
 

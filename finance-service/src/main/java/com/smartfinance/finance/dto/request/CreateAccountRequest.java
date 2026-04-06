@@ -10,5 +10,6 @@ public record CreateAccountRequest(
         @NotNull AccountType type,
         @NotBlank @Size(min = 3, max = 3) String currency,
         String color,
-        String icon
+        String icon,
+        java.math.BigDecimal initialBalance
 ) {}

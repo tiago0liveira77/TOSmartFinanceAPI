@@ -3,6 +3,7 @@ package com.smartfinance.auth.service;
 import com.smartfinance.auth.config.JwtConfig;
 import com.smartfinance.auth.dto.request.LoginRequest;
 import com.smartfinance.auth.dto.request.RegisterRequest;
+import java.util.UUID;
 import com.smartfinance.auth.dto.response.AuthResponse;
 import com.smartfinance.auth.dto.response.UserResponse;
 import com.smartfinance.auth.entity.AuthProvider;
@@ -45,6 +46,12 @@ public class AuthService {
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new InvalidCredentialsException();
         }
+        return buildAuthResponse(user);
+    }
+
+    public AuthResponse refreshAuth(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(InvalidCredentialsException::new);
         return buildAuthResponse(user);
     }
 

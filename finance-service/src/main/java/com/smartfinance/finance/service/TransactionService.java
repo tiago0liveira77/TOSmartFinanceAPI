@@ -120,6 +120,13 @@ public class TransactionService {
         if (request.notes() != null) transaction.setNotes(request.notes());
         if (request.date() != null) transaction.setDate(request.date());
 
+        if (request.amount() != null && request.amount().compareTo(transaction.getAmount()) != 0) {
+            BigDecimal diff = request.amount().subtract(transaction.getAmount());
+            BigDecimal balanceDelta = transaction.getType() == TransactionType.INCOME ? diff : diff.negate();
+            accountService.adjustBalance(transaction.getAccount().getId(), balanceDelta);
+            transaction.setAmount(request.amount());
+        }
+
         return TransactionResponse.from(transactionRepository.save(transaction));
     }
 

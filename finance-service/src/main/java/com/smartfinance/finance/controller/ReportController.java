@@ -25,24 +25,33 @@ public class ReportController {
 
     @GetMapping("/summary")
     public ApiResponse<ReportSummaryResponse> getSummary(
-            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year,
-            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getMonthValue()}") int month) {
-        return ApiResponse.ok(reportService.getSummary(year, month));
+            @RequestParam(name = "year", required = false) Integer year,
+            @RequestParam(name = "month", required = false) Integer month) {
+        LocalDate now = LocalDate.now();
+        return ApiResponse.ok(reportService.getSummary(
+                year != null ? year : now.getYear(),
+                month != null ? month : now.getMonthValue()));
     }
 
     @GetMapping("/by-category")
     public ApiResponse<List<CategoryReportResponse>> getByCategory(
-            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year,
-            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getMonthValue()}") int month,
-            @RequestParam(defaultValue = "EXPENSE") TransactionType type) {
-        return ApiResponse.ok(reportService.getByCategory(year, month, type));
+            @RequestParam(name = "year", required = false) Integer year,
+            @RequestParam(name = "month", required = false) Integer month,
+            @RequestParam(name = "type", defaultValue = "EXPENSE") TransactionType type) {
+        LocalDate now = LocalDate.now();
+        return ApiResponse.ok(reportService.getByCategory(
+                year != null ? year : now.getYear(),
+                month != null ? month : now.getMonthValue(),
+                type));
     }
 
     @GetMapping("/monthly-trend")
     public ApiResponse<List<MonthlyTrendResponse>> getMonthlyTrend(
-            @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year,
-            @RequestParam(defaultValue = "12") int months) {
-        return ApiResponse.ok(reportService.getMonthlyTrend(year, months));
+            @RequestParam(name = "year", required = false) Integer year,
+            @RequestParam(name = "months", defaultValue = "12") int months) {
+        return ApiResponse.ok(reportService.getMonthlyTrend(
+                year != null ? year : LocalDate.now().getYear(),
+                months));
     }
 
     @GetMapping("/budget-status")

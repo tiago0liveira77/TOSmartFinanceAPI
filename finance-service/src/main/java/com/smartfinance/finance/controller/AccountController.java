@@ -33,24 +33,24 @@ public class AccountController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<AccountResponse> findById(@PathVariable UUID id) {
+    public ApiResponse<AccountResponse> findById(@PathVariable("id") UUID id) {
         return ApiResponse.ok(accountService.findById(id));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<AccountResponse> update(@PathVariable UUID id,
+    public ApiResponse<AccountResponse> update(@PathVariable("id") UUID id,
                                                @Valid @RequestBody UpdateAccountRequest request) {
         return ApiResponse.ok(accountService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable UUID id) {
+    public void delete(@PathVariable("id") UUID id) {
         accountService.delete(id);
     }
 
     @GetMapping("/{id}/summary")
-    public ApiResponse<AccountSummaryResponse> getSummary(@PathVariable UUID id) {
+    public ApiResponse<AccountSummaryResponse> getSummary(@PathVariable("id") UUID id) {
         return ApiResponse.ok(accountService.getSummary(id));
     }
 }

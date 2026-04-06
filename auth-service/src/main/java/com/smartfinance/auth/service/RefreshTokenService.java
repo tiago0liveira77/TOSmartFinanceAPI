@@ -16,29 +16,39 @@ public class RefreshTokenService {
     private final StringRedisTemplate redis;
     private final JwtConfig jwtConfig;
 
+    // Key: "rt:{jti}"  Value: userId
     private static final String KEY_PREFIX = "rt:";
 
-    // Cria um refresh token e guarda no Redis
-    // Key: "rt:{userId}:{jti}"  Value: userId
+    /** Cria um refresh token opaco (jti) e guarda no Redis. */
     public String create(UUID userId) {
         String jti = UUID.randomUUID().toString();
-        String key = KEY_PREFIX + userId + ":" + jti;
-        redis.opsForValue().set(key, userId.toString(),
+        redis.opsForValue().set(
+                KEY_PREFIX + jti,
+                userId.toString(),
                 Duration.ofSeconds(jwtConfig.refreshTokenExpiration()));
-        return jti;  // devolvemos o jti como refresh token (opaco)
+        return jti;
     }
 
-    // Valida e invalida (rotação): apaga o token atual e cria um novo
-    public Optional<String> rotateToken(UUID userId, String jti) {
-        String key = KEY_PREFIX + userId + ":" + jti;
-        Boolean exists = redis.hasKey(key);
-        if (Boolean.FALSE.equals(exists)) return Optional.empty();
+    /** Valida o jti e devolve o userId associado (sem o apagar). */
+    public Optional<UUID> getUserId(String jti) {
+        String value = redis.opsForValue().get(KEY_PREFIX + jti);
+        return Optional.ofNullable(value).map(UUID::fromString);
+    }
+
+    /**
+     * Rotação: invalida o jti atual e emite um novo.
+     * Devolve o novo jti, ou empty se o token não existe.
+     */
+    public Optional<String> rotate(String jti) {
+        String key = KEY_PREFIX + jti;
+        String userIdStr = redis.opsForValue().get(key);
+        if (userIdStr == null) return Optional.empty();
         redis.delete(key);
-        return Optional.of(create(userId));
+        return Optional.of(create(UUID.fromString(userIdStr)));
     }
 
-    public void invalidateAll(UUID userId) {
-        // apaga todos os refresh tokens do utilizador (logout)
-        redis.delete(redis.keys(KEY_PREFIX + userId + ":*"));
+    /** Invalida um refresh token específico (logout). */
+    public void invalidate(String jti) {
+        redis.delete(KEY_PREFIX + jti);
     }
 }

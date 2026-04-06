@@ -54,7 +54,7 @@ rabbitmq:
 
 # JWT secret (para validar tokens do auth-service)
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:smartfinance-dev-secret-key-minimum-32chars}
 
 # CSV import settings
 csv:

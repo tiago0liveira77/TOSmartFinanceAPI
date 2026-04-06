@@ -1,0 +1,14 @@
+UPDATE categories SET icon = '🍽️' WHERE name = 'Alimentação'  AND is_system = true;
+UPDATE categories SET icon = '🚗' WHERE name = 'Transporte'    AND is_system = true;
+UPDATE categories SET icon = '🏠' WHERE name = 'Habitação'     AND is_system = true;
+UPDATE categories SET icon = '❤️' WHERE name = 'Saúde'         AND is_system = true;
+UPDATE categories SET icon = '🎬' WHERE name = 'Entretenimento' AND is_system = true;
+UPDATE categories SET icon = '📚' WHERE name = 'Educação'      AND is_system = true;
+UPDATE categories SET icon = '👕' WHERE name = 'Vestuário'     AND is_system = true;
+UPDATE categories SET icon = '💻' WHERE name = 'Tecnologia'    AND is_system = true;
+UPDATE categories SET icon = '✈️' WHERE name = 'Viagens'       AND is_system = true;
+UPDATE categories SET icon = '📦' WHERE name = 'Outros'        AND is_system = true;
+UPDATE categories SET icon = '💼' WHERE name = 'Salário'       AND is_system = true;
+UPDATE categories SET icon = '🖥️' WHERE name = 'Freelance'     AND is_system = true;
+UPDATE categories SET icon = '📈' WHERE name = 'Investimentos'  AND is_system = true;
+UPDATE categories SET icon = '💰' WHERE name = 'Outros Rendimentos' AND is_system = true;

@@ -33,17 +33,17 @@ public class TransactionController {
 
     @GetMapping
     public ApiResponse<PageResponse<TransactionResponse>> findAll(
-            @RequestParam(required = false) UUID accountId,
-            @RequestParam(required = false) UUID categoryId,
-            @RequestParam(required = false) TransactionType type,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) BigDecimal minAmount,
-            @RequestParam(required = false) BigDecimal maxAmount,
-            @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "date,desc") String sort) {
+            @RequestParam(name = "accountId", required = false) UUID accountId,
+            @RequestParam(name = "categoryId", required = false) UUID categoryId,
+            @RequestParam(name = "type", required = false) TransactionType type,
+            @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(name = "minAmount", required = false) BigDecimal minAmount,
+            @RequestParam(name = "maxAmount", required = false) BigDecimal maxAmount,
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "sort", defaultValue = "date,desc") String sort) {
 
         String[] sortParts = sort.split(",");
         Sort.Direction direction = sortParts.length > 1 && "asc".equalsIgnoreCase(sortParts[1])
@@ -61,19 +61,19 @@ public class TransactionController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<TransactionResponse> findById(@PathVariable UUID id) {
+    public ApiResponse<TransactionResponse> findById(@PathVariable("id") UUID id) {
         return ApiResponse.ok(transactionService.findById(id));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<TransactionResponse> update(@PathVariable UUID id,
+    public ApiResponse<TransactionResponse> update(@PathVariable("id") UUID id,
                                                    @Valid @RequestBody UpdateTransactionRequest request) {
         return ApiResponse.ok(transactionService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable UUID id) {
+    public void delete(@PathVariable("id") UUID id) {
         transactionService.delete(id);
     }
 

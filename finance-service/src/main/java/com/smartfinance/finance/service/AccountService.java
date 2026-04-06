@@ -53,6 +53,9 @@ public class AccountService {
         account.setCurrency(request.currency());
         account.setColor(request.color());
         account.setIcon(request.icon());
+        if (request.initialBalance() != null) {
+            account.setBalance(request.initialBalance());
+        }
         return AccountResponse.from(accountRepository.save(account));
     }
 
