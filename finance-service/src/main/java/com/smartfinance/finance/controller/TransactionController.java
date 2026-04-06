@@ -77,6 +77,12 @@ public class TransactionController {
         transactionService.delete(id);
     }
 
+    @DeleteMapping("/recurrence-group/{groupId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteGroup(@PathVariable("groupId") UUID groupId) {
+        transactionService.deleteGroup(groupId);
+    }
+
     @PostMapping("/import")
     public ApiResponse<CsvImportResponse> importCsv(
             @RequestParam("file") MultipartFile file,

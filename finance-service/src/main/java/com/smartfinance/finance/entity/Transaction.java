@@ -51,6 +51,10 @@ public class Transaction {
     @Column(nullable = false)
     private boolean isRecurring = false;
 
+    /** true = o saldo da conta já foi ajustado para esta transação */
+    @Column(nullable = false)
+    private boolean settled = false;
+
     @Enumerated(EnumType.STRING)
     private RecurrenceRule recurrenceRule;
 
@@ -61,6 +65,8 @@ public class Transaction {
     private BigDecimal aiConfidence;
 
     private UUID importId;
+
+    private UUID recurrenceGroupId;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

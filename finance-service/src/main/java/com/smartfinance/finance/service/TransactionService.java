@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -77,28 +79,51 @@ public class TransactionService {
                     .orElseThrow(() -> new CategoryNotFoundException(request.categoryId()));
         }
 
-        Transaction transaction = new Transaction();
-        transaction.setUserId(userId);
-        transaction.setAccount(account);
-        transaction.setCategory(category);
-        transaction.setAmount(request.amount().abs());
-        transaction.setType(request.type());
-        transaction.setDescription(request.description());
-        transaction.setNotes(request.notes());
-        transaction.setDate(request.date());
-        transaction.setRecurring(request.isRecurring());
-        transaction.setRecurrenceRule(request.recurrenceRule());
+        boolean recurring = request.isRecurring()
+                && request.recurrenceRule() != null
+                && request.occurrences() != null
+                && request.occurrences() > 1;
 
-        Transaction saved = transactionRepository.save(transaction);
+        UUID groupId = recurring ? UUID.randomUUID() : null;
+        int count = recurring ? request.occurrences() : 1;
 
-        BigDecimal delta = request.type() == TransactionType.INCOME
-                ? request.amount() : request.amount().negate();
-        accountService.adjustBalance(account.getId(), delta);
+        BigDecimal amount = request.amount().abs();
+        LocalDate today = LocalDate.now();
+
+        List<Transaction> instances = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            LocalDate date = nextDate(request.date(), request.recurrenceRule(), i);
+            boolean settled = !date.isAfter(today);
+
+            Transaction t = new Transaction();
+            t.setUserId(userId);
+            t.setAccount(account);
+            t.setCategory(category);
+            t.setAmount(amount);
+            t.setType(request.type());
+            t.setDescription(request.description());
+            t.setNotes(request.notes());
+            t.setDate(date);
+            t.setRecurring(recurring);
+            t.setRecurrenceRule(recurring ? request.recurrenceRule() : null);
+            t.setRecurrenceGroupId(groupId);
+            t.setSettled(settled);
+            instances.add(t);
+        }
+
+        List<Transaction> saved = transactionRepository.saveAll(instances);
+
+        // Ajusta o saldo apenas pelas instâncias settled (data <= hoje)
+        long settledCount = instances.stream().filter(Transaction::isSettled).count();
+        if (settledCount > 0) {
+            BigDecimal delta = request.type() == TransactionType.INCOME ? amount : amount.negate();
+            accountService.adjustBalance(account.getId(), delta.multiply(BigDecimal.valueOf(settledCount)));
+        }
 
         eventPublisher.publishTransactionCreated(new TransactionCreatedEvent(
-                userId, saved.getId(), saved.getAmount(), saved.getDescription()));
+                userId, saved.get(0).getId(), amount, request.description()));
 
-        return TransactionResponse.from(saved);
+        return TransactionResponse.from(saved.get(0));
     }
 
     @Transactional
@@ -118,14 +143,37 @@ public class TransactionService {
 
         if (request.description() != null) transaction.setDescription(request.description());
         if (request.notes() != null) transaction.setNotes(request.notes());
-        if (request.date() != null) transaction.setDate(request.date());
 
-        if (request.amount() != null && request.amount().compareTo(transaction.getAmount()) != 0) {
-            BigDecimal diff = request.amount().subtract(transaction.getAmount());
-            BigDecimal balanceDelta = transaction.getType() == TransactionType.INCOME ? diff : diff.negate();
-            accountService.adjustBalance(transaction.getAccount().getId(), balanceDelta);
-            transaction.setAmount(request.amount());
+        LocalDate today = LocalDate.now();
+        boolean wasSettled = transaction.isSettled();
+        LocalDate newDate = request.date() != null ? request.date() : transaction.getDate();
+        BigDecimal newAmount = request.amount() != null ? request.amount() : transaction.getAmount();
+        boolean willBeSettled = !newDate.isAfter(today);
+
+        BigDecimal oldAmount = transaction.getAmount();
+        UUID accountId = transaction.getAccount().getId();
+        TransactionType type = transaction.getType();
+
+        if (!wasSettled && willBeSettled) {
+            // Agendada → realizada: aplicar o valor ao saldo pela primeira vez
+            BigDecimal delta = type == TransactionType.INCOME ? newAmount : newAmount.negate();
+            accountService.adjustBalance(accountId, delta);
+            transaction.setSettled(true);
+        } else if (wasSettled && !willBeSettled) {
+            // Realizada → agendada: reverter o valor do saldo
+            BigDecimal delta = type == TransactionType.INCOME ? oldAmount.negate() : oldAmount;
+            accountService.adjustBalance(accountId, delta);
+            transaction.setSettled(false);
+        } else if (wasSettled && newAmount.compareTo(oldAmount) != 0) {
+            // Realizada → realizada com valor diferente: ajustar pela diferença
+            BigDecimal diff = newAmount.subtract(oldAmount);
+            BigDecimal delta = type == TransactionType.INCOME ? diff : diff.negate();
+            accountService.adjustBalance(accountId, delta);
         }
+        // Agendada → agendada: nada a fazer no saldo
+
+        if (request.date() != null) transaction.setDate(newDate);
+        if (request.amount() != null) transaction.setAmount(newAmount);
 
         return TransactionResponse.from(transactionRepository.save(transaction));
     }
@@ -136,11 +184,42 @@ public class TransactionService {
         Transaction transaction = transactionRepository.findByIdAndUserIdAndDeletedAtIsNull(id, userId)
                 .orElseThrow(() -> new TransactionNotFoundException(id));
 
-        BigDecimal delta = transaction.getType() == TransactionType.INCOME
-                ? transaction.getAmount().negate() : transaction.getAmount();
-        accountService.adjustBalance(transaction.getAccount().getId(), delta);
+        if (transaction.isSettled()) {
+            BigDecimal delta = transaction.getType() == TransactionType.INCOME
+                    ? transaction.getAmount().negate() : transaction.getAmount();
+            accountService.adjustBalance(transaction.getAccount().getId(), delta);
+        }
 
         transaction.setDeletedAt(LocalDateTime.now());
         transactionRepository.save(transaction);
+    }
+
+    @Transactional
+    public void deleteGroup(UUID recurrenceGroupId) {
+        UUID userId = getUserId();
+        List<Transaction> group = transactionRepository
+                .findByRecurrenceGroupIdAndUserIdAndDeletedAtIsNull(recurrenceGroupId, userId);
+
+        LocalDateTime now = LocalDateTime.now();
+        for (Transaction t : group) {
+            if (t.isSettled()) {
+                BigDecimal delta = t.getType() == TransactionType.INCOME
+                        ? t.getAmount().negate() : t.getAmount();
+                accountService.adjustBalance(t.getAccount().getId(), delta);
+            }
+            t.setDeletedAt(now);
+        }
+        transactionRepository.saveAll(group);
+    }
+
+    private LocalDate nextDate(LocalDate base, RecurrenceRule rule, int index) {
+        if (index == 0 || rule == null) return base;
+        return switch (rule) {
+            case DAILY     -> base.plusDays(index);
+            case WEEKLY    -> base.plusWeeks(index);
+            case MONTHLY   -> base.plusMonths(index);
+            case BIMONTHLY -> base.plusMonths((long) index * 2);
+            case YEARLY    -> base.plusYears(index);
+        };
     }
 }

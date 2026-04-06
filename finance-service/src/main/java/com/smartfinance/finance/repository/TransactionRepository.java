@@ -18,6 +18,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
 
     Optional<Transaction> findByIdAndUserIdAndDeletedAtIsNull(UUID id, UUID userId);
 
+    List<Transaction> findByRecurrenceGroupIdAndUserIdAndDeletedAtIsNull(UUID recurrenceGroupId, UUID userId);
+
+    @Query("SELECT t FROM Transaction t WHERE t.settled = false AND t.date <= :today AND t.deletedAt IS NULL")
+    List<Transaction> findUnsettledDue(@Param("today") LocalDate today);
+
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t " +
             "WHERE t.userId = :userId AND t.type = :type " +
             "AND t.date >= :start AND t.date < :end AND t.deletedAt IS NULL")

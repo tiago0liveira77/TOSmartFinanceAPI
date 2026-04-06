@@ -18,6 +18,9 @@ public record TransactionResponse(
         String notes,
         LocalDate date,
         boolean isRecurring,
+        String recurrenceRule,
+        UUID recurrenceGroupId,
+        boolean settled,
         boolean aiCategorized,
         BigDecimal aiConfidence
 ) {
@@ -34,6 +37,9 @@ public record TransactionResponse(
                 t.getNotes(),
                 t.getDate(),
                 t.isRecurring(),
+                t.getRecurrenceRule() != null ? t.getRecurrenceRule().name() : null,
+                t.getRecurrenceGroupId(),
+                t.isSettled(),
                 t.isAiCategorized(),
                 t.getAiConfidence()
         );

@@ -3,6 +3,8 @@ package com.smartfinance.finance.dto.request;
 import com.smartfinance.finance.entity.RecurrenceRule;
 import com.smartfinance.finance.entity.TransactionType;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -19,5 +21,6 @@ public record CreateTransactionRequest(
         String notes,
         @NotNull LocalDate date,
         boolean isRecurring,
-        RecurrenceRule recurrenceRule
+        RecurrenceRule recurrenceRule,
+        @Min(2) @Max(24) Integer occurrences   // quantas vezes repetir (inclui a primeira)
 ) {}
