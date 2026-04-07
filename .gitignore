@@ -32,3 +32,4 @@ api-gateway/src/main/resources/application-local.yml
 /api-gateway/target
 api-gateway/src/main/resources/application-local.yml
 /notification-service/target
+ai-service/src/main/resources/application-local.yml

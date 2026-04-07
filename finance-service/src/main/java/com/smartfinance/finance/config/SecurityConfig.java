@@ -1,5 +1,6 @@
 package com.smartfinance.finance.config;
 
+import com.smartfinance.finance.security.InternalServiceFilter;
 import com.smartfinance.finance.security.JwtAuthenticationFilter;
 import com.smartfinance.shared.security.JwtValidator;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,8 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 )
+                .addFilterBefore(new InternalServiceFilter(),
+                        UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new JwtAuthenticationFilter(jwtValidator),
                         UsernamePasswordAuthenticationFilter.class)
                 .build();

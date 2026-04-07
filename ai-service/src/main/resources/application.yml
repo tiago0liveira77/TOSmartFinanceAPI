@@ -25,10 +25,12 @@ rabbitmq:
     transactions-imported: smartfinance.transactions.imported
     ai-categorization-completed: smartfinance.ai.categorization.completed
 
-# OpenAI
+# OpenAI-compatible API (defaults to Groq — free tier)
 openai:
   api-key: ${OPENAI_API_KEY}
-  model: gpt-4o-mini
+  base-url: ${OPENAI_BASE_URL:https://api.groq.com/openai/v1}
+  model: ${OPENAI_MODEL:llama-3.3-70b-versatile}
+  model-fast: ${OPENAI_MODEL_FAST:llama-3.1-8b-instant}
   max-tokens: 1000
   temperature: 0.1
 
@@ -37,10 +39,6 @@ ai:
   cache:
     insights-ttl-hours: 24
     forecast-ttl-hours: 6
-
-# JWT secret (para validar tokens nas chamadas HTTP directas)
-jwt:
-  secret: ${JWT_SECRET}
 
 # Finance service URL (para buscar dados de transações)
 services:
