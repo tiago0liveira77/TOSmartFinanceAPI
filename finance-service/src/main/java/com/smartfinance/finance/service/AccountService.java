@@ -10,6 +10,7 @@ import com.smartfinance.finance.exception.AccountNotFoundException;
 import com.smartfinance.finance.repository.AccountRepository;
 import com.smartfinance.finance.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AccountService {
 
     private final AccountRepository accountRepository;
@@ -56,7 +58,10 @@ public class AccountService {
         if (request.initialBalance() != null) {
             account.setBalance(request.initialBalance());
         }
-        return AccountResponse.from(accountRepository.save(account));
+        AccountResponse saved = AccountResponse.from(accountRepository.save(account));
+        log.info("[FINANCE] Account created: userId={}, accountId={}, name={}, type={}",
+                userId, saved.id(), saved.name(), saved.type());
+        return saved;
     }
 
     @Transactional
@@ -76,8 +81,10 @@ public class AccountService {
         UUID userId = getUserId();
         Account account = accountRepository.findByIdAndUserIdAndDeletedAtIsNull(id, userId)
                 .orElseThrow(() -> new AccountNotFoundException(id));
+        // Soft delete — a conta não é apagada fisicamente para preservar histórico de transações
         account.setDeletedAt(java.time.LocalDateTime.now());
         accountRepository.save(account);
+        log.info("[FINANCE] Account deleted (soft): accountId={}, userId={}", id, userId);
     }
 
     public AccountSummaryResponse getSummary(UUID id) {
@@ -101,7 +108,9 @@ public class AccountService {
     public void adjustBalance(UUID accountId, BigDecimal delta) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new AccountNotFoundException(accountId));
-        account.setBalance(account.getBalance().add(delta));
+        BigDecimal newBalance = account.getBalance().add(delta);
+        account.setBalance(newBalance);
         accountRepository.save(account);
+        log.debug("[FINANCE] Account balance adjusted: accountId={}, delta={}, newBalance={}", accountId, delta, newBalance);
     }
 }

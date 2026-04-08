@@ -47,6 +47,8 @@ public class CsvImportService {
     public CsvImportResponse importCsv(MultipartFile file, UUID accountId) {
         UUID userId = getUserId();
         UUID importId = UUID.randomUUID();
+        log.info("[FINANCE] CSV import started: userId={}, accountId={}, fileName={}, importId={}",
+                userId, accountId, file.getOriginalFilename(), importId);
 
         Account account = accountRepository.findByIdAndUserIdAndDeletedAtIsNull(accountId, userId)
                 .orElseThrow(() -> new AccountNotFoundException(accountId));
@@ -120,14 +122,18 @@ public class CsvImportService {
             accountRepository.save(account);
 
         } catch (CsvException | java.io.IOException e) {
-            log.error("CSV import error", e);
+            log.error("[FINANCE] CSV import error: userId={}, fileName={}, error={}", userId, file.getOriginalFilename(), e.getMessage(), e);
             errors.add("Failed to parse CSV: " + e.getMessage());
         }
 
         int imported = importedIds.size();
         int failed   = total - imported;
 
+        log.info("[FINANCE] CSV import complete: importId={}, total={}, imported={}, failed={}",
+                importId, total, imported, failed);
+
         if (!importedIds.isEmpty()) {
+            // Publica evento para o ai-service categorizar as transações assincronamente
             eventPublisher.publishTransactionImported(
                     new TransactionImportedEvent(userId, importId, importedIds));
         }

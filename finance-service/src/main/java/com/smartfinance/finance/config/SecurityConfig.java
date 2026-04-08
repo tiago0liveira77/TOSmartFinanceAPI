@@ -36,6 +36,12 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 )
+                // ORDEM DOS FILTROS DE SEGURANÇA:
+                //   1. InternalServiceFilter — autentica chamadas de serviços internos via X-Internal-Service
+                //   2. JwtAuthenticationFilter — autentica utilizadores externos via Bearer JWT
+                // Esta ordem garante que chamadas internas são autenticadas sem tentar validar JWT.
+                // Se ambos os headers estiverem presentes (situação anómala), o InternalServiceFilter
+                // tem precedência porque define auth no SecurityContext antes do JWT filter correr.
                 .addFilterBefore(new InternalServiceFilter(),
                         UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new JwtAuthenticationFilter(jwtValidator),

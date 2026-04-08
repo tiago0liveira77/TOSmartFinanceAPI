@@ -73,6 +73,7 @@ spring:
           '[/**]':
             allowedOrigins:
               - "${CORS_ALLOWED_ORIGIN_LOCAL:http://localhost:5173}"
+              - "http://192.168.1.200:5173"
               - "${CORS_ALLOWED_ORIGIN_PROD:https://smartfinance.example.com}"
             allowedMethods:
               - GET
@@ -92,6 +93,13 @@ spring:
 # JWT secret — shared with all services for token validation
 jwt:
   secret: ${JWT_SECRET:smartfinance-dev-secret-key-minimum-32chars}
+
+# Origins espelhados aqui para o CorsLoggingFilter (o @Value não resolve chaves com [/**])
+cors-logging:
+  allowed-origins:
+    - "${CORS_ALLOWED_ORIGIN_LOCAL:http://localhost:5173}"
+    - "http://192.168.1.200:5173"
+    - "${CORS_ALLOWED_ORIGIN_PROD:https://smartfinance.example.com}"
 
 management:
   endpoints:

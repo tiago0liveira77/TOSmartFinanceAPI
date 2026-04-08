@@ -17,6 +17,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Acede aos dados financeiros do finance-service via HTTP REST.
+ *
+ * DOIS MODOS DE AUTENTICAÇÃO:
+ *
+ * 1. userEntity(authHeader) — para chamadas originadas de controllers REST:
+ *    O JWT do utilizador é propagado via "Authorization: Bearer {token}".
+ *    O finance-service valida o JWT via JwtAuthenticationFilter e extrai o userId.
+ *    Usar quando: InsightService, ForecastService, ChatService (têm o JWT do utilizador).
+ *
+ * 2. internalEntity(userId) — para chamadas do RabbitMQ consumer:
+ *    O consumer assíncrono não tem JWT do utilizador — fluxo desacoplado do request HTTP.
+ *    Usa o header proprietário "X-Internal-Service: ai-service" + "X-User-Id: {uuid}".
+ *    O finance-service (InternalServiceFilter) reconhece este header e define autenticação
+ *    de serviço sem validar JWT.
+ *    SEGURANÇA: Este mecanismo assume rede interna segura (Docker). O api-gateway nunca
+ *    deve fazer pass-through do header X-Internal-Service ao exterior.
+ *    Usar quando: CategorizationService, TransactionImportedConsumer (sem JWT disponível).
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -29,15 +48,17 @@ public class FinanceDataService {
     private String financeServiceUrl;
 
     // -----------------------------------------------------------------------
-    // Headers
+    // Construção de headers de autenticação
     // -----------------------------------------------------------------------
 
+    /** Headers para chamadas autenticadas com JWT do utilizador (controllers REST). */
     private HttpEntity<Void> userEntity(String authHeader) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", authHeader);
         return new HttpEntity<>(headers);
     }
 
+    /** Headers para chamadas inter-serviço sem JWT (RabbitMQ consumers). */
     private HttpEntity<Void> internalEntity(UUID userId) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Internal-Service", "ai-service");
@@ -61,6 +82,7 @@ public class FinanceDataService {
 
     public SummaryInfo getSummary(int year, int month, String authHeader) {
         String url = financeServiceUrl + "/api/v1/reports/summary?year={y}&month={m}";
+        log.debug("[AI][HTTP] GET finance-service/reports/summary: year={}, month={}", year, month);
         try {
             ResponseEntity<String> response = financeRestTemplate.exchange(
                     url, HttpMethod.GET, userEntity(authHeader), String.class, year, month);
@@ -82,7 +104,7 @@ public class FinanceDataService {
                     new BigDecimal(data.get("savingsRate").asText()),
                     cats);
         } catch (Exception e) {
-            log.warn("Failed to get summary from finance-service: {}", e.getMessage());
+            log.warn("[AI][HTTP] Failed to get summary from finance-service: year={}, month={}, error={}", year, month, e.getMessage());
             return new SummaryInfo(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, List.of());
         }
     }
@@ -95,6 +117,7 @@ public class FinanceDataService {
 
     public List<TrendInfo> getMonthlyTrend(String authHeader) {
         String url = financeServiceUrl + "/api/v1/reports/monthly-trend?months=6";
+        log.debug("[AI][HTTP] GET finance-service/reports/monthly-trend: months=6");
         try {
             ResponseEntity<String> response = financeRestTemplate.exchange(
                     url, HttpMethod.GET, userEntity(authHeader), String.class);
@@ -110,7 +133,7 @@ public class FinanceDataService {
             }
             return result;
         } catch (Exception e) {
-            log.warn("Failed to get trend from finance-service: {}", e.getMessage());
+            log.warn("[AI][HTTP] Failed to get monthly trend from finance-service: error={}", e.getMessage());
             return List.of();
         }
     }
@@ -138,7 +161,7 @@ public class FinanceDataService {
             }
             return result;
         } catch (Exception e) {
-            log.warn("Failed to get categories from finance-service: {}", e.getMessage());
+            log.warn("[AI][HTTP] Failed to get categories from finance-service: userId={}, error={}", userId, e.getMessage());
             return List.of();
         }
     }
@@ -160,7 +183,7 @@ public class FinanceDataService {
                     new BigDecimal(data.get("amount").asText()),
                     data.get("type").asText());
         } catch (Exception e) {
-            log.warn("Failed to get transaction {} from finance-service: {}", transactionId, e.getMessage());
+            log.warn("[AI][HTTP] Failed to get transaction from finance-service: txId={}, error={}", transactionId, e.getMessage());
             return null;
         }
     }

@@ -40,6 +40,8 @@ public class ChatService {
 
         List<Map<String, String>> history = loadHistory(cacheKey);
 
+        // Constrói o system prompt com dados financeiros em tempo real (3 HTTP calls)
+        log.debug("[AI] Building system prompt for chat: conversationId={}, historySize={}", convId, history.size());
         String systemPrompt = buildSystemPrompt(authHeader);
 
         // Build messages: system + history + new user message
@@ -57,11 +59,15 @@ public class ChatService {
             aiResponse = "Erro ao comunicar com o assistente. Tenta novamente.";
         }
 
-        // Update history
+        log.debug("[AI] Chat response received: conversationId={}, responseLength={}", convId, aiResponse.length());
+
+        // Atualiza histórico e trunca se necessário
         history.add(AiClientService.user(message));
         history.add(AiClientService.assistant(aiResponse));
         if (history.size() > MAX_HISTORY) {
+            int removed = history.size() - MAX_HISTORY;
             history = history.subList(history.size() - MAX_HISTORY, history.size());
+            log.info("[AI][REDIS] Chat history truncated: conversationId={}, removedMessages={}", convId, removed);
         }
         saveHistory(cacheKey, history);
 
@@ -76,6 +82,21 @@ public class ChatService {
 
     // -----------------------------------------------------------------------
 
+    /**
+     * Constrói o system prompt para cada mensagem de chat com dados financeiros em tempo real.
+     *
+     * NOTA DE PERFORMANCE: Este método faz 3 chamadas HTTP síncronas ao finance-service por mensagem:
+     *   1. getSummary(mês atual)   → receitas, despesas, saldo, top categorias
+     *   2. getSummary(mês anterior) → idem para comparação
+     *   3. getMonthlyTrend()        → últimos 6 meses de histórico
+     *
+     * Estas chamadas não são cacheadas (o chat precisa de dados atuais).
+     * Se a latência do chat se tornar um problema, considerar cachear o prompt
+     * no Redis com TTL de 1 hora (aceitando dados com até 1h de atraso).
+     *
+     * O contexto histórico de 6 meses permite ao AI responder a perguntas sobre
+     * meses anteriores sem chamadas adicionais durante a conversa.
+     */
     private String buildSystemPrompt(String authHeader) {
         YearMonth now = YearMonth.now();
         YearMonth prev = now.minusMonths(1);

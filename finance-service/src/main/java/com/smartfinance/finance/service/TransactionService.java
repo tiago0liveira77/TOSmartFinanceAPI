@@ -14,6 +14,7 @@ import com.smartfinance.finance.repository.TransactionSpecification;
 import com.smartfinance.shared.dto.PageResponse;
 import com.smartfinance.shared.event.TransactionCreatedEvent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -30,6 +31,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
@@ -123,6 +125,8 @@ public class TransactionService {
         eventPublisher.publishTransactionCreated(new TransactionCreatedEvent(
                 userId, saved.get(0).getId(), amount, request.description()));
 
+        log.info("[FINANCE] Transaction(s) created: userId={}, firstTxId={}, amount={}, type={}, count={}",
+                userId, saved.get(0).getId(), amount, request.type(), saved.size());
         return TransactionResponse.from(saved.get(0));
     }
 
@@ -192,6 +196,7 @@ public class TransactionService {
 
         transaction.setDeletedAt(LocalDateTime.now());
         transactionRepository.save(transaction);
+        log.info("[FINANCE] Transaction deleted (soft): txId={}, userId={}", id, userId);
     }
 
     @Transactional

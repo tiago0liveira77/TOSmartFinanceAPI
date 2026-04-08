@@ -8,8 +8,7 @@ import com.smartfinance.shared.dto.ErrorResponse;
 import com.smartfinance.shared.exception.UnauthorizedException;
 import com.smartfinance.shared.security.JwtValidator;
 import io.jsonwebtoken.Claims;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -30,27 +29,34 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * Global JWT authentication filter for the API Gateway.
+ * Filtro global JWT do API Gateway. Corre antes de todos os outros filtros (Order -1).
  *
- * <p>Runs before all other filters (Order -1). For each incoming request:
- * <ul>
- *   <li>If the path is in the public whitelist → passes through unchanged.</li>
- *   <li>Otherwise → validates the Bearer token, adds X-User-Id and X-User-Email
- *       headers to the downstream request, or returns 401 if invalid/absent.</li>
- * </ul>
+ * FLUXO POR REQUEST:
+ *   1. OPTIONS (CORS preflight) → passa sempre sem validação
+ *   2. Path em PUBLIC_PATHS → passa sem validação (ex: login, register)
+ *   3. Outros paths → valida Bearer token:
+ *      - Token válido → injeta X-User-Id e X-User-Email no request downstream
+ *      - Token ausente/inválido → responde 401 imediatamente
+ *
+ * HEADERS INJETADOS DOWNSTREAM:
+ *   X-User-Id    → UUID do utilizador autenticado (lido nos controllers via @RequestHeader)
+ *   X-User-Email → email do utilizador (informativo, pode estar vazio)
+ *   Authorization → mantido para que os serviços downstream possam validar independentemente
+ *
+ * NOTA: O header X-Internal-Service NÃO é passado ao exterior — apenas tráfego interno
+ *   (dentro da rede Docker) deve usar este mecanismo de autenticação inter-serviço.
  */
 @Component
+@Slf4j
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
-
-    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String HEADER_USER_ID = "X-User-Id";
     private static final String HEADER_USER_EMAIL = "X-User-Email";
 
     /**
-     * Paths that bypass JWT validation entirely.
-     * Supports Ant-style patterns (**, *).
+     * Paths que ignoram validação JWT. Suporta padrões Ant (**, *).
+     * Atualizar esta lista quando novos endpoints públicos forem adicionados.
      */
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/v1/auth/login",
@@ -85,19 +91,20 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String path = request.getURI().getPath();
         HttpMethod method = request.getMethod();
 
-        // Always allow OPTIONS (CORS preflight)
+        // CORS preflight — passa sempre sem validação
         if (HttpMethod.OPTIONS.equals(method)) {
             return chain.filter(exchange);
         }
 
-        // Allow public paths without authentication
+        // Paths públicos — passa sem validação
         if (isPublicPath(path)) {
             return chain.filter(exchange);
         }
 
-        // Extract Bearer token
+        // Extrai Bearer token do header Authorization
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+            log.debug("[GATEWAY] Request rejected — missing Authorization header: path={}", path);
             return rejectUnauthorized(exchange, "Token de autenticação ausente");
         }
 
@@ -108,21 +115,24 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             String userId = claims.getSubject();
             String email = claims.get("email", String.class);
 
-            // Mutate request: add user identity headers for downstream services
+            // Injeta headers de identidade no request downstream.
+            // Os microserviços leem X-User-Id para identificar o utilizador,
+            // sem precisar de re-validar o JWT individualmente.
             ServerHttpRequest mutatedRequest = request.mutate()
                     .header(HEADER_USER_ID, userId)
                     .header(HEADER_USER_EMAIL, email != null ? email : "")
-                    // Remove Authorization from downstream if not needed
-                    // (keep it so services can also validate independently if they choose to)
+                    // Mantém o Authorization para serviços que precisam de validar o JWT
+                    // diretamente (ex: finance-service via JwtAuthenticationFilter próprio)
                     .build();
 
+            log.debug("[GATEWAY] Request authenticated: userId={}, path={}", userId, path);
             return chain.filter(exchange.mutate().request(mutatedRequest).build());
 
         } catch (UnauthorizedException e) {
-            log.debug("JWT validation failed for path {}: {}", path, e.getMessage());
+            log.debug("[GATEWAY] JWT validation failed: path={}, reason={}", path, e.getMessage());
             return rejectUnauthorized(exchange, "Token inválido ou expirado");
         } catch (Exception e) {
-            log.warn("Unexpected error during JWT validation for path {}: {}", path, e.getMessage());
+            log.warn("[GATEWAY] Unexpected error during JWT validation: path={}, error={}", path, e.getMessage());
             return rejectUnauthorized(exchange, "Erro de autenticação");
         }
     }

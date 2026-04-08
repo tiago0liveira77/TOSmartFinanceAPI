@@ -14,6 +14,7 @@ import com.smartfinance.finance.repository.CategoryRepository;
 import com.smartfinance.finance.repository.TransactionRepository;
 import com.smartfinance.shared.event.BudgetThresholdEvent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BudgetService {
 
     private final BudgetRepository budgetRepository;
@@ -66,7 +68,10 @@ public class BudgetService {
         budget.setEndDate(request.endDate());
         if (request.alertThreshold() != null) budget.setAlertThreshold(request.alertThreshold());
 
-        return BudgetResponse.from(budgetRepository.save(budget));
+        BudgetResponse saved = BudgetResponse.from(budgetRepository.save(budget));
+        log.info("[FINANCE] Budget created: userId={}, budgetId={}, category={}, amount={}, period={}",
+                userId, saved.id(), saved.categoryName(), saved.amount(), saved.period());
+        return saved;
     }
 
     @Transactional
@@ -121,6 +126,9 @@ public class BudgetService {
                     BigDecimal remaining = budget.getAmount().subtract(spent).max(BigDecimal.ZERO);
 
                     if (!"OK".equals(status)) {
+                        // Limiar ultrapassado (WARNING ou EXCEEDED) — publica evento para notification-service
+                        log.info("[FINANCE][RABBIT] Budget threshold reached: budgetId={}, category={}, status={}, pct={}%",
+                                budget.getId(), budget.getCategory().getName(), status, percentage.intValue());
                         eventPublisher.publishBudgetThreshold(new BudgetThresholdEvent(
                                 userId, budget.getId(), percentage.intValue()));
                     }

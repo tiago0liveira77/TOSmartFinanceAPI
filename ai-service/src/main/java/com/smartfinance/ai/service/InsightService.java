@@ -40,10 +40,13 @@ public class InsightService {
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
             try {
+                log.debug("[AI][REDIS] Cache hit: key={}", cacheKey);
                 return objectMapper.readValue(cached, InsightResponse.class);
             } catch (Exception e) {
-                log.warn("Failed to deserialize cached insights: {}", e.getMessage());
+                log.warn("[AI][REDIS] Cache deserialization failed, regenerating: key={}, error={}", cacheKey, e.getMessage());
             }
+        } else {
+            log.info("[AI][REDIS] Cache miss — generating insights: userId={}, month={}", userId, month);
         }
 
         YearMonth ym = YearMonth.parse(month);
@@ -90,8 +93,9 @@ public class InsightService {
             redisTemplate.opsForValue().set(
                     cacheKey, objectMapper.writeValueAsString(result),
                     insightsTtlHours, TimeUnit.HOURS);
+            log.info("[AI][REDIS] Insights cached: key={}, count={}, ttl={}h", cacheKey, insights.size(), insightsTtlHours);
         } catch (Exception e) {
-            log.warn("Failed to cache insights: {}", e.getMessage());
+            log.warn("[AI][REDIS] Failed to cache insights: key={}, error={}", cacheKey, e.getMessage());
         }
 
         return result;
@@ -125,6 +129,17 @@ public class InsightService {
         }
     }
 
+    /**
+     * Remove delimitadores de código Markdown que alguns LLMs incluem na resposta
+     * mesmo quando instruídos a devolver apenas JSON puro.
+     *
+     * Exemplos de respostas normalizadas por este método:
+     *   ```json\n{"insights": [...]}\n```  →  {"insights": [...]}
+     *   ```\n{"insights": [...]}\n```      →  {"insights": [...]}
+     *
+     * Modelos Groq (llama-3.x) incluem estes delimitadores ocasionalmente,
+     * especialmente com temperature > 0.3 ou quando o prompt não é suficientemente explícito.
+     */
     static String stripMarkdownFences(String content) {
         content = content.trim();
         if (content.startsWith("```")) {
