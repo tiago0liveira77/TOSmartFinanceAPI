@@ -10,3 +10,4 @@ D:\Coding\smartfinance\backend\shared-lib\src\main\java\com\smartfinance\shared\
 D:\Coding\smartfinance\backend\shared-lib\src\main\java\com\smartfinance\shared\exception\UnauthorizedException.java
 D:\Coding\smartfinance\backend\shared-lib\src\main\java\com\smartfinance\shared\security\JwtValidator.java
 D:\Coding\smartfinance\backend\shared-lib\src\main\java\com\smartfinance\shared\security\JwtValidatorImpl.java
+D:\Coding\smartfinance\backend\shared-lib\src\main\java\com\smartfinance\shared\util\DescriptionNormalizer.java

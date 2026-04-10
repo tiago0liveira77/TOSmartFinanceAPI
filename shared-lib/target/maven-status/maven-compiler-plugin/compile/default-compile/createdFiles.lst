@@ -1,12 +1,13 @@
 com\smartfinance\shared\dto\PageResponse.class
 com\smartfinance\shared\exception\SmartFinanceException.class
-com\smartfinance\shared\exception\UnauthorizedException.class
 com\smartfinance\shared\dto\ApiResponse.class
 com\smartfinance\shared\exception\ResourceNotFoundException.class
 com\smartfinance\shared\security\JwtValidatorImpl.class
 com\smartfinance\shared\dto\ErrorResponse.class
 com\smartfinance\shared\event\BudgetThresholdEvent.class
+com\smartfinance\shared\security\JwtValidator.class
+com\smartfinance\shared\exception\UnauthorizedException.class
 com\smartfinance\shared\event\CategorizationCompletedEvent.class
 com\smartfinance\shared\event\TransactionCreatedEvent.class
-com\smartfinance\shared\security\JwtValidator.class
+com\smartfinance\shared\util\DescriptionNormalizer.class
 com\smartfinance\shared\event\TransactionImportedEvent.class

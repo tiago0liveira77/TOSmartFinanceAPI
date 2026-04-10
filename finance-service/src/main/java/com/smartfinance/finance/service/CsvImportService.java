@@ -14,6 +14,7 @@ import com.smartfinance.finance.exception.AccountNotFoundException;
 import com.smartfinance.finance.repository.AccountRepository;
 import com.smartfinance.finance.repository.TransactionRepository;
 import com.smartfinance.shared.event.TransactionImportedEvent;
+import com.smartfinance.shared.util.DescriptionNormalizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -82,7 +83,7 @@ public class CsvImportService {
                 }
             }
             if (!headerErrors.isEmpty()) {
-                rows.add(new CsvPreviewRow(1, "INVALID", null, null, null, null, headerErrors));
+                rows.add(new CsvPreviewRow(1, "INVALID", null, null, null, null, null, headerErrors));
                 return new CsvPreviewResponse(1, 0, 1, rows);
             }
 
@@ -106,6 +107,7 @@ public class CsvImportService {
                 }
 
                 String description = row[descIdx].trim();
+                String normalizedDescription = DescriptionNormalizer.normalize(description);
 
                 BigDecimal amount = null;
                 try {
@@ -122,13 +124,13 @@ public class CsvImportService {
                 }
 
                 String status = rowErrors.isEmpty() ? "VALID" : "INVALID";
-                rows.add(new CsvPreviewRow(lineNumber, status, date, description, amount, type, rowErrors));
+                rows.add(new CsvPreviewRow(lineNumber, status, date, description, normalizedDescription, amount, type, rowErrors));
             }
 
         } catch (CsvException | java.io.IOException e) {
             log.error("[FINANCE] CSV preview parse error: userId={}, fileName={}, error={}",
                     userId, file.getOriginalFilename(), e.getMessage(), e);
-            rows.add(new CsvPreviewRow(0, "INVALID", null, null, null, null,
+            rows.add(new CsvPreviewRow(0, "INVALID", null, null, null, null, null,
                     List.of("Erro ao ler ficheiro CSV: " + e.getMessage())));
         }
 
