@@ -1,8 +1,10 @@
 package com.smartfinance.finance.controller;
 
 import com.smartfinance.finance.dto.request.CreateTransactionRequest;
+import com.smartfinance.finance.dto.request.CsvConfirmRequest;
 import com.smartfinance.finance.dto.request.UpdateTransactionRequest;
 import com.smartfinance.finance.dto.response.CsvImportResponse;
+import com.smartfinance.finance.dto.response.CsvPreviewResponse;
 import com.smartfinance.finance.dto.response.TransactionResponse;
 import com.smartfinance.finance.entity.TransactionType;
 import com.smartfinance.finance.service.CsvImportService;
@@ -85,10 +87,22 @@ public class TransactionController {
         transactionService.deleteGroup(groupId);
     }
 
+    @PostMapping("/import/confirm")
+    public ApiResponse<CsvImportResponse> confirmImport(@Valid @RequestBody CsvConfirmRequest request) {
+        return ApiResponse.ok(csvImportService.confirmImport(request));
+    }
+
+    @PostMapping("/import/preview")
+    public ApiResponse<CsvPreviewResponse> previewCsv(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(name = "accountId") UUID accountId) {
+        return ApiResponse.ok(csvImportService.previewCsv(file, accountId));
+    }
+
     @PostMapping("/import")
     public ApiResponse<CsvImportResponse> importCsv(
             @RequestParam("file") MultipartFile file,
-            @RequestParam("accountId") UUID accountId) {
+            @RequestParam(name = "accountId") UUID accountId) {
         return ApiResponse.ok(csvImportService.importCsv(file, accountId));
     }
 }

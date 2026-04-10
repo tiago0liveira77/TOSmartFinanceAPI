@@ -33,3 +33,7 @@ api-gateway/src/main/resources/application-local.yml
 api-gateway/src/main/resources/application-local.yml
 /notification-service/target
 ai-service/src/main/resources/application-local.yml
+/auth-service/logs
+/ai-service/logs
+/api-gateway/logs
+/finance-service/logs
