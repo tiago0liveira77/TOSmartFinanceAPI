@@ -23,6 +23,7 @@ public class CategorizationService {
     private final AiClientService aiClient;
     private final AiProperties aiProperties;
     private final FinanceDataService financeDataService;
+    private final DescriptionNormalizer descriptionNormalizer;
     private final ObjectMapper objectMapper;
 
     public record CategoryResult(UUID categoryId, BigDecimal confidence) {}
@@ -45,8 +46,11 @@ public class CategorizationService {
             return Optional.empty();
         }
 
+        String normalizedDescription = descriptionNormalizer.normalize(tx.description());
+        log.debug("Categorizing: original='{}' normalized='{}'", tx.description(), normalizedDescription);
+
         String prompt = String.format("""
-                Categoriza esta transação bancária.
+                Categoriza esta transação bancária portuguesa.
                 Descrição: '%s'
                 Valor: %.2f€
                 Tipo: %s
@@ -54,7 +58,7 @@ public class CategorizationService {
 
                 Responde APENAS com JSON: {"category": "NomeDaCategoria", "confidence": 0.95}
                 Escolhe a categoria mais adequada da lista. Se não tiver correspondência clara, usa "Outros".
-                """, tx.description(), tx.amount(), tx.type(), categoryNames);
+                """, normalizedDescription, tx.amount(), tx.type(), categoryNames);
 
         try {
             List<Map<String, String>> messages = List.of(
