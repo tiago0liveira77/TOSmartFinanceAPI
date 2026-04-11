@@ -38,6 +38,7 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
     private final AccountService accountService;
+    private final CategorizationHintService hintService;
     private final EventPublisherService eventPublisher;
 
     private UUID getUserId() {
@@ -141,6 +142,8 @@ public class TransactionService {
                     .filter(c -> c.isSystem() || userId.equals(c.getUserId()))
                     .orElseThrow(() -> new CategoryNotFoundException(request.categoryId()));
             transaction.setCategory(category);
+            // Guardar hint: o utilizador corrigiu/confirmou esta categoria para esta descrição
+            hintService.saveOrUpdate(userId, transaction.getDescription(), category);
         } else {
             transaction.setCategory(null);
         }

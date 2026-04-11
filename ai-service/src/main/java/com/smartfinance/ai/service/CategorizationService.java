@@ -110,6 +110,13 @@ public class CategorizationService {
         log.debug("[CATEGORIZATION] txId={} original='{}' normalized='{}'",
                 transactionId, tx.description(), normalizedDescription);
 
+        // Verificar hint antes de chamar a AI — match direto = confiança 1.0, sem custo de API
+        Optional<UUID> hintMatch = financeDataService.findCategorizationHint(userId, normalizedDescription);
+        if (hintMatch.isPresent()) {
+            log.debug("[CATEGORIZATION] txId={} — hint match found, skipping AI", transactionId);
+            return Optional.of(new CategoryResult(hintMatch.get(), BigDecimal.ONE));
+        }
+
         String fewShot = "INCOME".equals(tx.type()) ? FEW_SHOT_INCOME : FEW_SHOT_EXPENSE;
 
         String prompt = String.format("""

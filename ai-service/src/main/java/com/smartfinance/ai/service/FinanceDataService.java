@@ -15,6 +15,7 @@ import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -164,6 +165,30 @@ public class FinanceDataService {
             log.warn("[AI][HTTP] Failed to get categories from finance-service: userId={}, error={}", userId, e.getMessage());
             return List.of();
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Categorization hints (internal — for RabbitMQ consumer)
+    // -----------------------------------------------------------------------
+
+    /**
+     * Consulta o finance-service por um hint de categorização para a descrição dada.
+     * Devolve o categoryId se existir match, ou empty se a AI deve ser chamada.
+     */
+    public Optional<UUID> findCategorizationHint(UUID userId, String description) {
+        String url = financeServiceUrl + "/api/v1/categorization-hints/match?userId={userId}&description={description}";
+        try {
+            ResponseEntity<String> response = financeRestTemplate.exchange(
+                    url, HttpMethod.GET, internalEntity(userId), String.class, userId, description);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                JsonNode body = objectMapper.readTree(response.getBody());
+                return Optional.of(UUID.fromString(body.get("categoryId").asText()));
+            }
+        } catch (Exception e) {
+            // 204 No Content ou erro de rede → deixar a AI decidir
+            log.debug("[AI][HINTS] No hint found for userId={} description='{}': {}", userId, description, e.getMessage());
+        }
+        return Optional.empty();
     }
 
     // -----------------------------------------------------------------------

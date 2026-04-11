@@ -41,6 +41,7 @@ public class CsvImportService {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
+    private final CategorizationHintService hintService;
     private final EventPublisherService eventPublisher;
 
     private static final List<String> REQUIRED_HEADERS =
@@ -191,6 +192,8 @@ public class CsvImportService {
                     categoryRepository.findById(row.categoryId()).ifPresent(category -> {
                         transaction.setCategory(category);
                         transaction.setAiCategorized(false);
+                        // Guardar hint para que a AI aprenda com esta escolha
+                        hintService.saveOrUpdate(userId, row.description(), category);
                     });
                 } else {
                     // Sem categoria → AI irá categorizar depois
