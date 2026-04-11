@@ -12,6 +12,7 @@ import com.smartfinance.finance.entity.Transaction;
 import com.smartfinance.finance.entity.TransactionType;
 import com.smartfinance.finance.exception.AccountNotFoundException;
 import com.smartfinance.finance.repository.AccountRepository;
+import com.smartfinance.finance.repository.CategoryRepository;
 import com.smartfinance.finance.repository.TransactionRepository;
 import com.smartfinance.shared.event.TransactionImportedEvent;
 import com.smartfinance.shared.util.DescriptionNormalizer;
@@ -39,6 +40,7 @@ public class CsvImportService {
 
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
+    private final CategoryRepository categoryRepository;
     private final EventPublisherService eventPublisher;
 
     private static final List<String> REQUIRED_HEADERS =
@@ -159,7 +161,8 @@ public class CsvImportService {
                 .orElseThrow(() -> new AccountNotFoundException(request.accountId()));
 
         List<String> errors = new ArrayList<>();
-        List<UUID> importedIds = new ArrayList<>();
+        List<UUID> importedIds        = new ArrayList<>();  // todos os importados
+        List<UUID> needsAiIds         = new ArrayList<>();  // sem categoria manual → AI categoriza
 
         LocalDate today = LocalDate.now();
 
@@ -182,10 +185,25 @@ public class CsvImportService {
                 transaction.setDate(date);
                 transaction.setImportId(importId);
                 transaction.setSettled(settled);
-                transaction.setAiCategorized(false);
+
+                if (row.categoryId() != null) {
+                    // Categoria selecionada manualmente — atribuir diretamente, sem AI
+                    categoryRepository.findById(row.categoryId()).ifPresent(category -> {
+                        transaction.setCategory(category);
+                        transaction.setAiCategorized(false);
+                    });
+                } else {
+                    // Sem categoria → AI irá categorizar depois
+                    transaction.setAiCategorized(false);
+                }
 
                 Transaction saved = transactionRepository.save(transaction);
                 importedIds.add(saved.getId());
+
+                // Só envia para AI as transações sem categoria manual
+                if (row.categoryId() == null) {
+                    needsAiIds.add(saved.getId());
+                }
 
                 if (settled) {
                     BigDecimal delta = type == TransactionType.INCOME ? amount : amount.negate();
@@ -204,12 +222,14 @@ public class CsvImportService {
         int imported = importedIds.size();
         int failed   = request.transactions().size() - imported;
 
-        log.info("[FINANCE] CSV confirm import complete: importId={}, total={}, imported={}, failed={}",
-                importId, request.transactions().size(), imported, failed);
+        log.info("[FINANCE] CSV confirm import complete: importId={}, total={}, imported={}, failed={}, manual={}, ai={}",
+                importId, request.transactions().size(), imported, failed,
+                imported - needsAiIds.size(), needsAiIds.size());
 
-        if (!importedIds.isEmpty()) {
+        // Só publica evento para AI se houver transações sem categoria manual
+        if (!needsAiIds.isEmpty()) {
             eventPublisher.publishTransactionImported(
-                    new TransactionImportedEvent(userId, importId, importedIds));
+                    new TransactionImportedEvent(userId, importId, needsAiIds));
         }
 
         return new CsvImportResponse(importId, request.transactions().size(), imported, failed, errors);
