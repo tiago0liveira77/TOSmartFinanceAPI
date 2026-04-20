@@ -1,8 +1,10 @@
 package com.smartfinance.finance.controller;
 
+import com.smartfinance.finance.dto.request.BatchCreateTransactionRequest;
 import com.smartfinance.finance.dto.request.CreateTransactionRequest;
 import com.smartfinance.finance.dto.request.CsvConfirmRequest;
 import com.smartfinance.finance.dto.request.UpdateTransactionRequest;
+import com.smartfinance.finance.dto.response.BatchCreateTransactionResponse;
 import com.smartfinance.finance.dto.response.CsvImportResponse;
 import com.smartfinance.finance.dto.response.CsvPreviewResponse;
 import com.smartfinance.finance.dto.response.TransactionResponse;
@@ -85,6 +87,13 @@ public class TransactionController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteGroup(@PathVariable("groupId") UUID groupId) {
         transactionService.deleteGroup(groupId);
+    }
+
+    @PostMapping("/batch")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<BatchCreateTransactionResponse> createBatch(
+            @Valid @RequestBody BatchCreateTransactionRequest request) {
+        return ApiResponse.created(transactionService.createBatch(request));
     }
 
     @PostMapping("/import/confirm")

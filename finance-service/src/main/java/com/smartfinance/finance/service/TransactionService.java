@@ -1,7 +1,10 @@
 package com.smartfinance.finance.service;
 
+import com.smartfinance.finance.dto.request.BatchCreateTransactionRequest;
+import com.smartfinance.finance.dto.request.BatchCreateTransactionRow;
 import com.smartfinance.finance.dto.request.CreateTransactionRequest;
 import com.smartfinance.finance.dto.request.UpdateTransactionRequest;
+import com.smartfinance.finance.dto.response.BatchCreateTransactionResponse;
 import com.smartfinance.finance.dto.response.TransactionResponse;
 import com.smartfinance.finance.entity.*;
 import com.smartfinance.finance.exception.AccountNotFoundException;
@@ -13,6 +16,7 @@ import com.smartfinance.finance.repository.TransactionRepository;
 import com.smartfinance.finance.repository.TransactionSpecification;
 import com.smartfinance.shared.dto.PageResponse;
 import com.smartfinance.shared.event.TransactionCreatedEvent;
+import com.smartfinance.shared.event.TransactionImportedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -142,10 +146,12 @@ public class TransactionService {
                     .filter(c -> c.isSystem() || userId.equals(c.getUserId()))
                     .orElseThrow(() -> new CategoryNotFoundException(request.categoryId()));
             transaction.setCategory(category);
+            transaction.setAiCategorized(false);
             // Guardar hint: o utilizador corrigiu/confirmou esta categoria para esta descrição
             hintService.saveOrUpdate(userId, transaction.getDescription(), category);
         } else {
             transaction.setCategory(null);
+            transaction.setAiCategorized(false);
         }
 
         if (request.description() != null) transaction.setDescription(request.description());
@@ -183,6 +189,75 @@ public class TransactionService {
         if (request.amount() != null) transaction.setAmount(newAmount);
 
         return TransactionResponse.from(transactionRepository.save(transaction));
+    }
+
+    @Transactional
+    public BatchCreateTransactionResponse createBatch(BatchCreateTransactionRequest request) {
+        UUID userId = getUserId();
+        UUID batchId = UUID.randomUUID();
+        LocalDate today = LocalDate.now();
+
+        int created = 0;
+        int failed = 0;
+        List<UUID> needsAiIds = new ArrayList<>();
+
+        for (BatchCreateTransactionRow row : request.transactions()) {
+            try {
+                Account account = accountRepository
+                        .findByIdAndUserIdAndDeletedAtIsNull(row.accountId(), userId)
+                        .orElseThrow(() -> new AccountNotFoundException(row.accountId()));
+
+                Category category = null;
+                if (row.categoryId() != null) {
+                    category = categoryRepository.findById(row.categoryId())
+                            .filter(c -> c.isSystem() || userId.equals(c.getUserId()))
+                            .orElse(null);
+                    if (category != null) {
+                        hintService.saveOrUpdate(userId, row.description(), category);
+                    }
+                }
+
+                BigDecimal amount = row.amount().abs();
+                boolean settled = !row.date().isAfter(today);
+
+                Transaction t = new Transaction();
+                t.setUserId(userId);
+                t.setAccount(account);
+                t.setCategory(category);
+                t.setAmount(amount);
+                t.setType(row.type());
+                t.setDescription(row.description());
+                t.setDate(row.date());
+                t.setImportId(batchId);
+                t.setSettled(settled);
+                t.setAiCategorized(false);
+
+                Transaction saved = transactionRepository.save(t);
+                created++;
+
+                if (settled) {
+                    BigDecimal delta = row.type() == TransactionType.INCOME ? amount : amount.negate();
+                    accountService.adjustBalance(account.getId(), delta);
+                }
+
+                if (category == null) {
+                    needsAiIds.add(saved.getId());
+                }
+
+            } catch (Exception e) {
+                log.warn("[FINANCE] Batch create failed for row: {}", e.getMessage());
+                failed++;
+            }
+        }
+
+        if (!needsAiIds.isEmpty()) {
+            eventPublisher.publishTransactionImported(
+                    new TransactionImportedEvent(userId, batchId, needsAiIds));
+        }
+
+        log.info("[FINANCE] Batch create complete: userId={}, created={}, failed={}, ai={}",
+                userId, created, failed, needsAiIds.size());
+        return new BatchCreateTransactionResponse(request.transactions().size(), created, failed);
     }
 
     @Transactional
